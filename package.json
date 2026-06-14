@@ -1,0 +1,27 @@
+{
+  "name": "x-startup-analysis",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nexorial/x-startup-analysis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nexorial/x-startup-analysis/issues"
+  },
+  "homepage": "https://github.com/Nexorial/x-startup-analysis#readme",
+  "bin": {
+    "x-startup-analysis": "scripts/x-startup-analysis.mjs"
+  },
+  "description": "Local-first X account startup analysis capture and Markdown reporting tool.",
+  "scripts": {
+    "run": "node scripts/x-startup-analysis-run.mjs",
+    "analyze": "node scripts/x-startup-analysis.mjs",
+    "insights": "node scripts/x-startup-analysis-insights.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

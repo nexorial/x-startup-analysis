@@ -1,0 +1,4 @@
+interface:
+  display_name: "X Startup Analysis"
+  short_description: "Analyze X account growth from outside-in."
+  default_prompt: "Analyze @aleabitoreddit with the x-startup-analysis CLI workflow."

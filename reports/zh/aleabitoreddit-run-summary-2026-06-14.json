@@ -1,0 +1,18 @@
+{
+  "username": "aleabitoreddit",
+  "language": "zh",
+  "captureQuality": "dom-only",
+  "cdpAvailable": false,
+  "cdpEndpoint": null,
+  "tweets": 14,
+  "users": 1,
+  "rawPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/data/raw/aleabitoreddit-2026-06-14.json",
+  "timelinePath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-2026-06-14.md",
+  "csvPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-2026-06-14.csv",
+  "insightsPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-insights-2026-06-14.md",
+  "limitations": [
+    "Chrome plugin read-only DOM capture; GraphQL/Relay reply fields were not available.",
+    "DOM-only rows without explicit reply context must remain unclassified.",
+    "X virtualizes timelines, so the report covers the rows loaded before the timeline stopped changing."
+  ]
+}

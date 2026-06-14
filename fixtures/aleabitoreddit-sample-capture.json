@@ -1,0 +1,219 @@
+{
+  "graphql": {
+    "data": {
+      "user": {
+        "result": {
+            "rest_id": "u-aleabitoreddit",
+            "legacy": {
+            "screen_name": "aleabitoreddit",
+            "name": "aleabitoreddit",
+            "followers_count": 1234,
+            "friends_count": 90,
+            "statuses_count": 24,
+            "listed_count": 1
+          }
+        }
+      },
+      "timeline": {
+        "instructions": [
+          {
+            "entries": [
+              {
+                "content": {
+                  "itemContent": {
+                    "tweet_results": {
+                      "result": {
+                        "rest_id": "101",
+                        "views": { "count": "1800", "state": "EnabledWithCount" },
+                        "core": {
+                          "user_results": {
+                            "result": {
+                                  "rest_id": "u-aleabitoreddit",
+                                  "legacy": {
+                                    "screen_name": "aleabitoreddit",
+                                    "name": "aleabitoreddit",
+                                "followers_count": 1234,
+                                "friends_count": 90,
+                                "statuses_count": 24
+                              }
+                            }
+                          }
+                        },
+                        "legacy": {
+                          "id_str": "101",
+                          "created_at": "Tue Jun 02 00:00:00 +0000 2026",
+                          "full_text": "replying during the startup process",
+                          "favorite_count": 19,
+                          "reply_count": 2,
+                          "retweet_count": 1,
+                          "quote_count": 0,
+                          "bookmark_count": 3,
+                          "conversation_id_str": "90",
+                          "in_reply_to_status_id_str": "90",
+                          "in_reply_to_screen_name": "someone",
+                          "entities": { "urls": [] }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "content": {
+                  "itemContent": {
+                    "tweet_results": {
+                      "result": {
+                        "rest_id": "100",
+                        "views": { "count": "2500", "state": "EnabledWithCount" },
+                        "core": {
+                          "user_results": {
+                            "result": {
+                                  "rest_id": "u-aleabitoreddit",
+                                  "legacy": {
+                                    "screen_name": "aleabitoreddit",
+                                    "name": "aleabitoreddit",
+                                "followers_count": 1234,
+                                "friends_count": 90,
+                                "statuses_count": 24
+                              }
+                            }
+                          }
+                        },
+                        "legacy": {
+                          "id_str": "100",
+                          "created_at": "Mon Jun 01 00:00:00 +0000 2026",
+                          "full_text": "first launch post https://t.co/abc",
+                          "favorite_count": 31,
+                          "reply_count": 4,
+                          "retweet_count": 5,
+                          "quote_count": 1,
+                          "bookmark_count": 8,
+                          "conversation_id_str": "100",
+                          "entities": {
+                            "urls": [
+                              {
+                                "url": "https://t.co/abc",
+                                "expanded_url": "https://example.com/launch",
+                                "display_url": "example.com/launch"
+                              }
+                            ],
+                            "media": [
+                              {
+                                "type": "photo",
+                                "media_url_https": "https://pbs.twimg.com/media/example.jpg",
+                                "expanded_url": "https://x.com/aleabitoreddit/status/100/photo/1"
+                              }
+                            ]
+                          },
+                          "extended_entities": {
+                            "media": [
+                              {
+                                "type": "photo",
+                                "media_url_https": "https://pbs.twimg.com/media/example.jpg",
+                                "expanded_url": "https://x.com/aleabitoreddit/status/100/photo/1"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "capture": {
+    "version": "0.1.0",
+    "username": "aleabitoreddit",
+    "capturedAt": "2026-06-13T00:00:00.000Z",
+    "tweets": [
+      {
+        "id": "101",
+        "url": "https://x.com/aleabitoreddit/status/101",
+        "authorUsername": "aleabitoreddit",
+        "authorName": "aleabitoreddit",
+        "authorId": "u-aleabitoreddit",
+        "createdAt": "Tue Jun 02 00:00:00 +0000 2026",
+        "createdAtIso": "2026-06-02T00:00:00.000Z",
+        "text": "replying during the startup process",
+        "isReply": true,
+        "isQuote": false,
+        "isRetweet": false,
+        "inReplyToStatusId": "90",
+        "inReplyToScreenName": "someone",
+        "conversationId": "90",
+        "quotedStatusId": "",
+        "metrics": {
+          "impressions": 1800,
+          "likes": 19,
+          "replies": 2,
+          "retweets": 1,
+          "quotes": 0,
+          "bookmarks": 3
+        },
+        "media": [],
+        "urls": [],
+        "capturedAt": "2026-06-13T00:00:00.000Z",
+        "source": "graphql"
+      },
+      {
+        "id": "100",
+        "url": "https://x.com/aleabitoreddit/status/100",
+        "authorUsername": "aleabitoreddit",
+        "authorName": "aleabitoreddit",
+        "authorId": "u-aleabitoreddit",
+        "createdAt": "Mon Jun 01 00:00:00 +0000 2026",
+        "createdAtIso": "2026-06-01T00:00:00.000Z",
+        "text": "first launch post https://t.co/abc",
+        "isReply": false,
+        "isQuote": false,
+        "isRetweet": false,
+        "inReplyToStatusId": "",
+        "inReplyToScreenName": "",
+        "conversationId": "100",
+        "quotedStatusId": "",
+        "metrics": {
+          "impressions": 2500,
+          "likes": 31,
+          "replies": 4,
+          "retweets": 5,
+          "quotes": 1,
+          "bookmarks": 8
+        },
+        "media": [
+          {
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/example.jpg",
+            "expandedUrl": "https://x.com/aleabitoreddit/status/100/photo/1",
+            "videoUrls": []
+          }
+        ],
+        "urls": [
+          {
+            "url": "https://t.co/abc",
+            "expandedUrl": "https://example.com/launch",
+            "displayUrl": "example.com/launch"
+          }
+        ],
+        "capturedAt": "2026-06-13T00:00:00.000Z",
+        "source": "graphql"
+      }
+    ],
+    "users": [
+      {
+        "id": "u-aleabitoreddit",
+        "username": "aleabitoreddit",
+        "name": "aleabitoreddit",
+        "followers": 1234,
+        "following": 90,
+        "posts": 24,
+        "listed": 1,
+        "capturedAt": "2026-06-13T00:00:00.000Z"
+      }
+    ]
+  }
+}
