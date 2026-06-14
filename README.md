@@ -36,6 +36,7 @@ This Skill was created to make that outside-in analysis repeatable. Give it any 
 - **Full-history gate**: publishable account examples should use exhausted GraphQL posts+replies pagination. Use `--require-full-history` to stop before report generation when the capture cannot prove full posts/replies coverage.
 - **Automated CDP GraphQL pagination**: use a remote-debugging Chrome profile to let the CLI capture authenticated `UserTweets` and `UserTweetsAndReplies` request templates, then paginate cursors locally without writing credentials to reports.
 - **Authenticated cURL import**: when CDP is unavailable, copy `UserTweets` and `UserTweetsAndReplies` requests from Chrome DevTools into local gitignored files and let the CLI paginate cursors from those requests.
+- **Explicit limitation reporting**: run summaries preserve capture quality, cursor exhaustion, rate-limit, and source-boundary evidence so incomplete captures are not presented as full account history.
 - **Rich insights reports**: each report explains the account's source/capture boundary, metric correlations across impressions, likes, replies, reposts, quotes, and bookmarks, attribute correlations for text length/media/links/timing, topic signals, top timeline items by public signals, interaction accounts, and concrete replication lessons.
 - **Account style and habit analysis**: reports summarize the underlying account's posting style, recurring habits, reader value, niche positioning, and what followers appear to reward.
 - **Outside-in growth insights**: designed to answer what the account did to gain followers and what another creator can learn from it.
@@ -53,6 +54,20 @@ This repository includes a verified recent-window DOM-only analysis for [`@aleab
 - [Chinese insights report](reports/zh/aleabitoreddit-insights-2026-06-14.md)
 
 Important boundary: a report is not considered a full account picture unless the run summary says `completeness.isFullHistory: true`. DOM-only recent-window reports are validation artifacts only. Full posts/replies analysis requires GraphQL/Relay pagination from CDP or local DevTools cURL files.
+
+Current `@aleabitoreddit` validation status: the best local union captured 1,474 unique records, about 20.3% of the visible profile count of 7,267 posts. That is useful for method validation and partial analysis, but it is not a complete account history. X returned rate limits and cursor errors before cursor exhaustion.
+
+## Current Limitations
+
+This project is an outside-in analysis tool, not a privileged archive of X.
+
+- **No guarantee of full coverage for every account**: X can stop pagination through rate limits, server-side cursor errors, 404 responses, unavailable records, deleted posts, protected content, viewer blocks, or other account/session boundaries.
+- **Subscriber-only content is not required or expected**: the tool is designed for externally available analysis. Subscriber-only posts may be counted in X's profile total but unavailable to the current viewer and should not be treated as missing public data.
+- **The profile post count is an imperfect denominator**: X exposes a visible total such as "7,267 posts," but it does not separately expose "available non-subscriber posts/replies." Coverage percentages against the profile count are therefore conservative and may understate available-public coverage.
+- **DOM-only capture is incomplete by design**: browser DOM rows are affected by X virtualization, search indexing, translation, and pagination limits. DOM rows without explicit reply context are marked `unclassified`, not top-level posts.
+- **GraphQL/CDP is best effort, not magic**: authenticated CDP can capture real GraphQL request templates and paginate them, but X can still rate-limit `UserTweets` or return cursor failures for `UserTweetsAndReplies`. The CLI records those failures and refuses full-history output when sources are not exhausted.
+- **Reports are only publishable as full-history when gated**: use `--require-full-history` for canonical examples. If the run summary says `not-exhausted`, `partial-dom-only`, `missing-replies-source`, or `source-exhausted-count-gap`, treat the report as partial.
+- **Historical follower growth is not reconstructed from X alone**: public profile pages generally expose the current follower count only. Historical growth needs repeated snapshots or external archives.
 
 ## Repository Structure
 
