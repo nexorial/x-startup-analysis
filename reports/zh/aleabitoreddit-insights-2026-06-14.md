@@ -1,11 +1,13 @@
 # @aleabitoreddit X 账号外部视角分析
 
-生成时间：2026-06-14T09:01:27.631Z
+生成时间：2026-06-14T09:23:09.863Z
 
 ## 数据来源与分类边界
 
 - 输入记录：来自本地浏览器采集的 39 条时间线记录。
 - Capture quality：dom-only。
+- Full-history status：partial-dom-only。已采集 39 / profile count 7,267。
+- 重要：这不是 full-history 报告，不能当作该账号全部 posts/replies 的完整画像。
 - 当前账号快照：836,500 followers，175 following，profile post count 7,267。
 - 当前数据集中可确定的 replies：1。
 - 缺少 reply 元数据的 DOM-only 记录：38。这些只能视为 unclassified/top-level-unknown，不能证明是 posts。

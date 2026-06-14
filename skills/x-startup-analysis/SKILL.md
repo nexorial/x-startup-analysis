@@ -26,6 +26,14 @@ npm run run -- --username aleabitoreddit --language zh
 
 For another account, replace `aleabitoreddit` with the requested handle. The CLI writes raw JSON, timeline Markdown, CSV, insights Markdown, and a run summary.
 
+For canonical or public examples, require full posts/replies coverage:
+
+```bash
+npm run run -- --username aleabitoreddit --language zh --curl-dir x_curl --require-full-history
+```
+
+Before using `--curl-dir`, ask the user to save Chrome DevTools `Copy as cURL` output locally as `x_curl/UserTweets.curl` and `x_curl/UserTweetsAndReplies.curl`. These files contain login cookies/tokens and must stay local/gitignored.
+
 For fixture/offline analysis:
 
 ```bash
@@ -40,6 +48,12 @@ Read the run summary before claiming completion.
 - `mixed`: GraphQL and DOM rows were merged.
 - `dom-only`: Chrome automation read visible DOM rows only. Treat rows without explicit reply context as `unclassified`, not posts.
 - `unknown`: Empty or source-poor input.
+
+A report is a full account picture only when the run summary has `completeness.isFullHistory: true`.
+
+- `full-history`: GraphQL-backed posts+replies sources were exhausted and profile count coverage is satisfied.
+- `source-exhausted-count-gap`: GraphQL sources ended, but the unique record count is lower than the profile post count. Treat as incomplete unless unavailable/deleted/subscriber-only rows are explained.
+- `not-exhausted`, `missing-replies-source`, and `partial-dom-only`: incomplete. Do not publish as a full posts/replies account analysis.
 
 The CLI may use Chrome DOM automation when CDP/GraphQL capture is unavailable. If precise post/reply ratios matter and the run is `dom-only`, use the manual DevTools script before scrolling:
 

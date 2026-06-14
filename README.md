@@ -33,6 +33,8 @@ This Skill was created to make that outside-in analysis repeatable. Give it any 
 - **Language pre-config**: reports can be generated in English or Chinese with `--language en|zh`.
 - **Conservative post/reply classification**: DOM-only rows without parent/reply evidence are marked `unclassified`, never blindly treated as top-level posts.
 - **Capture quality labels**: summaries expose `graphql`, `mixed`, `dom-only`, or `unknown`.
+- **Full-history gate**: publishable account examples should use exhausted GraphQL posts+replies pagination. Use `--require-full-history` to stop before report generation when the capture cannot prove full posts/replies coverage.
+- **Authenticated cURL import**: when CDP is unavailable, copy `UserTweets` and `UserTweetsAndReplies` requests from Chrome DevTools into local gitignored files and let the CLI paginate cursors from those requests.
 - **Rich insights reports**: each report explains the account's source/capture boundary, metric correlations across impressions, likes, replies, reposts, quotes, and bookmarks, attribute correlations for text length/media/links/timing, topic signals, top timeline items by public signals, interaction accounts, and concrete replication lessons.
 - **Account style and habit analysis**: reports summarize the underlying account's posting style, recurring habits, reader value, niche positioning, and what followers appear to reward.
 - **Outside-in growth insights**: designed to answer what the account did to gain followers and what another creator can learn from it.
@@ -49,7 +51,7 @@ This repository includes a verified recent-window DOM-only analysis for [`@aleab
 - [Chinese timeline report](reports/zh/aleabitoreddit-2026-06-14.md)
 - [Chinese insights report](reports/zh/aleabitoreddit-insights-2026-06-14.md)
 
-Important boundary: the included example is `dom-only` and covers the recent rows X loaded before the profile timeline stopped at the page footer. It is useful for public engagement analysis, but a true full-history account analysis requires GraphQL/Relay capture, a longer accessible timeline, or another historical source.
+Important boundary: a report is not considered a full account picture unless the run summary says `completeness.isFullHistory: true`. DOM-only recent-window reports are validation artifacts only. Full posts/replies analysis requires GraphQL/Relay pagination from CDP or local DevTools cURL files.
 
 ## Repository Structure
 
@@ -108,6 +110,20 @@ Run the default workflow:
 npm run run -- --username aleabitoreddit --language en
 ```
 
+Run a publishable full-history workflow from local DevTools cURL files:
+
+```bash
+mkdir -p x_curl
+# Save Chrome DevTools "Copy as cURL" output as:
+# x_curl/UserTweets.curl
+# x_curl/UserTweetsAndReplies.curl
+npm run run -- \
+  --username aleabitoreddit \
+  --language en \
+  --curl-dir x_curl \
+  --require-full-history
+```
+
 The CLI writes:
 
 ```text
@@ -157,6 +173,29 @@ Every run summary includes `captureQuality`:
 - `mixed`: GraphQL and DOM rows were merged.
 - `dom-only`: visible DOM rows only. Rows without explicit reply context remain `unclassified`.
 - `unknown`: empty or source-poor input.
+
+Every run summary also includes `completeness`:
+
+- `full-history`: GraphQL-backed posts+replies sources were exhausted and profile count coverage is satisfied.
+- `source-exhausted-count-gap`: GraphQL sources ended, but the captured unique record count is lower than the profile post count. Treat as incomplete unless you can explain unavailable/deleted/subscriber-only rows.
+- `not-exhausted`: pagination stopped before the bottom cursor ended.
+- `missing-replies-source`: posts were captured, but replies were not.
+- `partial-dom-only`: visible DOM rows only.
+
+Use `--require-full-history` for reports intended as canonical examples. It exits before report generation unless the run is full.
+
+### Copy Full-History cURL Requests
+
+If CDP is unavailable, use Chrome DevTools:
+
+1. Log in to X in Chrome and open `https://x.com/<username>/with_replies`.
+2. Open DevTools, select `Network`, then `Fetch/XHR`.
+3. Filter by `UserTweets`.
+4. Refresh and scroll enough for X to load both profile timeline request types.
+5. Right-click the `UserTweets` request, choose `Copy` -> `Copy as cURL`, and save it as `x_curl/UserTweets.curl`.
+6. Right-click the `UserTweetsAndReplies` request, choose `Copy` -> `Copy as cURL`, and save it as `x_curl/UserTweetsAndReplies.curl`.
+
+`x_curl/*.curl` is gitignored because those files contain login cookies/tokens. Never commit or share them.
 
 For full-fidelity manual capture, open the target account in a logged-in browser:
 

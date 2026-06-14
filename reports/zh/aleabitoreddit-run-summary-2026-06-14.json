@@ -2,6 +2,17 @@
   "username": "aleabitoreddit",
   "language": "zh",
   "captureQuality": "dom-only",
+  "completeness": {
+    "status": "partial-dom-only",
+    "isFullHistory": false,
+    "captureQuality": "dom-only",
+    "capturedRecords": 39,
+    "expectedProfilePosts": 7267,
+    "coverageRatio": 0.005366726296958855,
+    "sourceExhausted": false,
+    "includesRepliesSource": true,
+    "profileCountMatched": false
+  },
   "sourceMethod": "input-file",
   "cdpAvailable": false,
   "cdpEndpoint": null,
@@ -23,12 +34,14 @@
   "timelinePath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-2026-06-14.md",
   "csvPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-2026-06-14.csv",
   "insightsPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-insights-2026-06-14.md",
+  "abortedBeforeReports": false,
   "limitations": [
     "Chrome plugin read-only DOM capture; GraphQL/Relay reply fields were not available.",
     "DOM-only rows without explicit reply context must remain unclassified.",
     "X virtualizes timelines and appears to stop loading older rows after a small recent window for this account/session."
   ],
   "sourceEvidence": {
+    "sources": [],
     "lastProgress": {
       "i": 80,
       "total": 39,

@@ -7,6 +7,7 @@ import {
   inferCaptureQuality,
   mergeCaptureRecords,
   normalizeLanguage,
+  summarizeCaptureCompleteness,
 } from '../lib/x-startup-analysis-core.mjs';
 
 const args = parseArgs(process.argv.slice(2));
@@ -22,6 +23,7 @@ const inputFiles = Array.isArray(args.input) ? args.input : [args.input];
 const captures = [];
 for (const input of inputFiles) captures.push(...await readInput(resolve(input), username));
 const inputLimitations = captureLimitationsFromInputs(captures);
+const inputCompleteness = captureCompletenessFromInputs(captures);
 
 const merged = mergeCaptureRecords(captures, username);
 const report = renderInsights({
@@ -31,6 +33,7 @@ const report = renderInsights({
   generatedAt: new Date().toISOString(),
   language,
   inputLimitations,
+  inputCompleteness,
 });
 
 const outPath = resolve(args.out);
@@ -38,7 +41,7 @@ await mkdir(dirname(outPath), { recursive: true });
 await writeFile(outPath, report);
 console.log(JSON.stringify({ username, language, tweets: merged.tweets.length, out: outPath }, null, 2));
 
-function renderInsights({ username, tweets, users, generatedAt, language = 'zh', inputLimitations = [] }) {
+function renderInsights({ username, tweets, users, generatedAt, language = 'zh', inputLimitations = [], inputCompleteness = null }) {
   const zh = normalizeLanguage(language) === 'zh';
   const knownReplies = tweets.filter((tweet) => tweet.isReply);
   const domUnclassified = tweets.filter((tweet) => !tweet.isReply && !tweet.isQuote && !tweet.isRetweet && String(tweet.source || '').includes('dom'));
@@ -66,6 +69,7 @@ function renderInsights({ username, tweets, users, generatedAt, language = 'zh',
   const styleRows = inferAccountStyle(tweets);
   const interactions = summarizeInteractions(knownReplies);
   const latestUser = users[0];
+  const completeness = inputCompleteness || summarizeCaptureCompleteness({ tweets, users });
 
   const lines = [];
   lines.push(zh ? `# @${username} X 账号外部视角分析` : `# @${username} outside-in X account analysis`);
@@ -78,6 +82,14 @@ function renderInsights({ username, tweets, users, generatedAt, language = 'zh',
     ? `- 输入记录：来自本地浏览器采集的 ${fmt(tweets.length)} 条时间线记录。`
     : `- Input records: ${fmt(tweets.length)} timeline items from local browser capture.`);
   lines.push(zh ? `- Capture quality：${inferCaptureQuality(tweets)}。` : `- Capture quality: ${inferCaptureQuality(tweets)}.`);
+  lines.push(zh
+    ? `- Full-history status：${completeness.status}。已采集 ${fmt(completeness.capturedRecords)} / profile count ${fmt(completeness.expectedProfilePosts || 0)}。`
+    : `- Full-history status: ${completeness.status}. Captured ${fmt(completeness.capturedRecords)} / profile count ${fmt(completeness.expectedProfilePosts || 0)}.`);
+  if (!completeness.isFullHistory) {
+    lines.push(zh
+      ? '- 重要：这不是 full-history 报告，不能当作该账号全部 posts/replies 的完整画像。'
+      : '- Important: this is not a full-history report and should not be treated as a complete picture of all posts/replies.');
+  }
   if (latestUser) {
     lines.push(zh
       ? `- 当前账号快照：${fmt(latestUser.followers)} followers，${fmt(latestUser.following)} following，profile post count ${fmt(latestUser.posts)}。`
@@ -228,6 +240,14 @@ function captureLimitationsFromInputs(captures) {
     for (const limitation of capture?.collection?.limitations || []) out.push(limitation);
   }
   return out;
+}
+
+function captureCompletenessFromInputs(captures) {
+  const rows = captures
+    .map((capture) => capture?.collection?.completeness)
+    .filter(Boolean);
+  const full = rows.find((row) => row.isFullHistory);
+  return full || rows[0] || null;
 }
 
 function metric(tweet, key) {

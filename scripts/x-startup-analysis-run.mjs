@@ -2,13 +2,14 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, extname, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import {
   extractFromGraphqlPayload,
   inferCaptureQuality,
   mergeCaptureRecords,
   normalizeLanguage,
+  summarizeCaptureCompleteness,
 } from '../lib/x-startup-analysis-core.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -25,7 +26,10 @@ const today = new Date().toISOString().slice(0, 10);
 const rawDir = resolve(args['raw-dir'] || 'data/raw');
 const outDir = resolve(args['out-dir'] || 'reports');
 const maxScrolls = Number(args['max-scrolls'] || 240);
+const maxPages = Number(args['max-pages'] || 500);
+const pageSize = args['page-size'] ? Number(args['page-size']) : null;
 const dryRun = Boolean(args['dry-run']);
+const requireFullHistory = Boolean(args['require-full-history']);
 const rawPath = resolve(rawDir, `${username}-${today}.json`);
 const timelinePath = resolve(outDir, `${username}-${today}.md`);
 const csvPath = resolve(outDir, `${username}-${today}.csv`);
@@ -40,6 +44,7 @@ if (dryRun) {
     maxScrolls,
     cdpAvailable: Boolean(cdp),
     cdpEndpoint: cdp?.webSocketDebuggerUrl || cdp?.url || null,
+    curlDir: args['curl-dir'] ? resolve(args['curl-dir']) : null,
     rawPath,
     timelinePath,
     csvPath,
@@ -86,6 +91,14 @@ if (inputFiles.length) {
     users: merged.users,
   };
   requestedMethod = 'input-file';
+} else if (args['curl-dir']) {
+  capture = await captureFromCurlDir({
+    username,
+    curlDir: resolve(args['curl-dir']),
+    maxPages,
+    pageSize,
+  });
+  requestedMethod = 'curl-graphql-pagination';
 } else {
   try {
     if (cdp) {
@@ -122,9 +135,35 @@ capture.collection = {
   captureQuality,
   limitations: [...new Set([...(capture.collection?.limitations || []), ...limitations])],
 };
+capture.collection.completeness = summarizeCaptureCompleteness(capture);
 
 await mkdir(dirname(rawPath), { recursive: true });
 await writeFile(rawPath, `${JSON.stringify(capture, null, 2)}\n`);
+
+if (requireFullHistory && !capture.collection.completeness.isFullHistory) {
+  capture.collection.limitations = [...new Set([
+    ...(capture.collection.limitations || []),
+    `Full-history requirement was not satisfied: ${capture.collection.completeness.status}. Reports were not generated.`,
+  ])];
+  capture.collection.completeness = summarizeCaptureCompleteness(capture);
+  await writeFile(rawPath, `${JSON.stringify(capture, null, 2)}\n`);
+  const summary = buildSummary({
+    username,
+    language,
+    capture,
+    captureQuality,
+    cdp,
+    rawPath,
+    timelinePath: null,
+    csvPath: null,
+    insightsPath: null,
+    abortedBeforeReports: true,
+  });
+  await mkdir(dirname(summaryPath), { recursive: true });
+  await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
+  console.log(JSON.stringify({ ...summary, summaryPath }, null, 2));
+  process.exit(2);
+}
 
 await runNodeScript('scripts/x-startup-analysis.mjs', [
   '--username', username,
@@ -142,30 +181,18 @@ await runNodeScript('scripts/x-startup-analysis-insights.mjs', [
   '--out', insightsPath,
 ]);
 
-const summary = {
+const summary = buildSummary({
   username,
   language,
+  capture,
   captureQuality,
-  sourceMethod: capture.collection?.method || null,
-  cdpAvailable: Boolean(cdp),
-  cdpEndpoint: cdp?.webSocketDebuggerUrl || cdp?.url || null,
-  tweets: capture.tweets?.length || 0,
-  users: capture.users?.length || 0,
-  capturedRange: {
-    first: capture.tweets?.[0]?.createdAtIso || null,
-    last: capture.tweets?.at(-1)?.createdAtIso || null,
-  },
-  profileSnapshot: capture.users?.[0] || null,
+  cdp,
   rawPath,
   timelinePath,
   csvPath,
   insightsPath,
-  limitations: capture.collection.limitations,
-  sourceEvidence: {
-    lastProgress: capture.collection?.progress?.at(-1) || null,
-    tail: capture.collection?.tail?.slice?.(-12) || null,
-  },
-};
+  abortedBeforeReports: false,
+});
 await mkdir(dirname(summaryPath), { recursive: true });
 await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
 
@@ -212,6 +239,47 @@ async function runNodeScript(script, argv) {
   });
   if (stderr.trim()) process.stderr.write(stderr);
   if (stdout.trim()) process.stdout.write(`${stdout.trim()}\n`);
+}
+
+function buildSummary({
+  username,
+  language,
+  capture,
+  captureQuality,
+  cdp,
+  rawPath,
+  timelinePath,
+  csvPath,
+  insightsPath,
+  abortedBeforeReports,
+}) {
+  return {
+    username,
+    language,
+    captureQuality,
+    completeness: capture.collection?.completeness || summarizeCaptureCompleteness(capture),
+    sourceMethod: capture.collection?.method || null,
+    cdpAvailable: Boolean(cdp),
+    cdpEndpoint: cdp?.webSocketDebuggerUrl || cdp?.url || null,
+    tweets: capture.tweets?.length || 0,
+    users: capture.users?.length || 0,
+    capturedRange: {
+      first: capture.tweets?.[0]?.createdAtIso || null,
+      last: capture.tweets?.at(-1)?.createdAtIso || null,
+    },
+    profileSnapshot: capture.users?.[0] || null,
+    rawPath,
+    timelinePath,
+    csvPath,
+    insightsPath,
+    abortedBeforeReports,
+    limitations: capture.collection.limitations,
+    sourceEvidence: {
+      sources: capture.collection?.sources || [],
+      lastProgress: capture.collection?.progress?.at(-1) || null,
+      tail: capture.collection?.tail?.slice?.(-12) || null,
+    },
+  };
 }
 
 async function detectCdpEndpoint() {
@@ -393,6 +461,214 @@ async function captureFromChromeDom({ username, maxScrolls }) {
   };
 }
 
+async function captureFromCurlDir({ username, curlDir, maxPages, pageSize }) {
+  const sourceFiles = [
+    { name: 'UserTweets', file: 'UserTweets.curl', required: true },
+    { name: 'UserTweetsAndReplies', file: 'UserTweetsAndReplies.curl', required: true },
+    { name: 'UserSuperFollowTweets', file: 'UserSuperFollowTweets.curl', required: false },
+  ];
+  const captures = [];
+  const sources = [];
+  const limitations = [];
+  for (const source of sourceFiles) {
+    const path = join(curlDir, source.file);
+    if (!existsSync(path)) {
+      const message = `Missing ${source.file} in ${curlDir}. Copy ${source.name} as cURL from Chrome DevTools to enable full pagination.`;
+      if (source.required) limitations.push(message);
+      continue;
+    }
+    const result = await paginateCurlSource({ username, path, sourceName: source.name, required: source.required, maxPages, pageSize });
+    captures.push(...result.captures);
+    sources.push(result.summary);
+    limitations.push(...result.limitations);
+  }
+  const merged = mergeCaptureRecords(captures, username);
+  const requiredSourcesPresent = sourceFiles.filter((source) => source.required).every((source) => existsSync(join(curlDir, source.file)));
+  const sourceExhausted = requiredSourcesPresent
+    && sources.filter((source) => source.required !== false).every((source) => source.exhausted);
+  if (!sourceExhausted) {
+    limitations.push('Full-history pagination is not proven because at least one required GraphQL source is missing, rate-limited, or stopped before cursor exhaustion.');
+  }
+  return {
+    version: '0.1.0-curl-graphql',
+    username,
+    capturedAt: new Date().toISOString(),
+    collection: {
+      method: 'curl-graphql-pagination',
+      curlDir,
+      maxPages,
+      pageSize,
+      sourceExhausted,
+      sources,
+      limitations: [...new Set(limitations)],
+    },
+    tweets: merged.tweets,
+    users: merged.users,
+  };
+}
+
+async function paginateCurlSource({ username, path, sourceName, required, maxPages, pageSize }) {
+  const command = splitShellWords(await readFile(path, 'utf8'));
+  if (command[0] !== 'curl' || !command[1]) throw new Error(`${basename(path)} is not a usable curl command`);
+  const { url, headers, method, body } = parseCurlCommand(command);
+  const captures = [];
+  const pages = [];
+  const limitations = [];
+  const seenCursors = new Set();
+  let cursor = null;
+  let exhausted = false;
+  for (let page = 0; page < maxPages; page += 1) {
+    if (seenCursors.has(cursor || '')) {
+      limitations.push(`${sourceName} stopped after a repeated cursor.`);
+      break;
+    }
+    seenCursors.add(cursor || '');
+    const pageUrl = setGraphqlCursor(url, cursor, pageSize);
+    const response = await fetch(pageUrl, {
+      method,
+      headers,
+      body: method === 'GET' ? undefined : body,
+      signal: AbortSignal.timeout(30000),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      limitations.push(`${sourceName} page ${page + 1} failed with HTTP ${response.status}.`);
+      break;
+    }
+    const json = JSON.parse(text);
+    if (json.errors && !json.data) {
+      limitations.push(`${sourceName} page ${page + 1} returned GraphQL errors.`);
+      break;
+    }
+    const extracted = extractFromGraphqlPayload(json, { username });
+    captures.push(extracted);
+    const nextCursor = findBottomCursor(json);
+    pages.push({
+      page: page + 1,
+      inputCursor: cursor || '',
+      nextCursor: nextCursor || '',
+      records: extracted.tweets?.length || 0,
+    });
+    if (!nextCursor || nextCursor === cursor) {
+      exhausted = true;
+      break;
+    }
+    cursor = nextCursor;
+  }
+  if (!exhausted && pages.length >= maxPages) {
+    limitations.push(`${sourceName} reached --max-pages ${maxPages} before cursor exhaustion.`);
+  }
+  return {
+    captures,
+    limitations,
+    summary: {
+      name: sourceName,
+      file: basename(path),
+      required,
+      pages: pages.length,
+      records: pages.reduce((sum, page) => sum + page.records, 0),
+      exhausted,
+      lastCursor: pages.at(-1)?.nextCursor || '',
+    },
+  };
+}
+
+function parseCurlCommand(command) {
+  let url = '';
+  let method = 'GET';
+  let body = null;
+  const headers = {};
+  for (let i = 1; i < command.length; i += 1) {
+    const token = command[i];
+    if (!url && /^https?:\/\//.test(token)) {
+      url = token;
+      continue;
+    }
+    if ((token === '-H' || token === '--header') && command[i + 1]) {
+      const header = command[++i];
+      const split = header.indexOf(':');
+      if (split > 0) headers[header.slice(0, split).trim()] = header.slice(split + 1).trim();
+      continue;
+    }
+    if ((token === '-X' || token === '--request') && command[i + 1]) {
+      method = command[++i].toUpperCase();
+      continue;
+    }
+    if (['--data', '--data-raw', '--data-binary', '-d'].includes(token) && command[i + 1]) {
+      body = command[++i];
+      if (method === 'GET') method = 'POST';
+    }
+  }
+  if (!url) throw new Error('curl command does not contain a URL');
+  return { url, headers, method, body };
+}
+
+function setGraphqlCursor(url, cursor, pageSize) {
+  const parsed = new URL(url);
+  const variables = JSON.parse(parsed.searchParams.get('variables') || '{}');
+  if (cursor) variables.cursor = cursor;
+  else delete variables.cursor;
+  if (pageSize) variables.count = pageSize;
+  parsed.searchParams.set('variables', JSON.stringify(variables));
+  return parsed.toString();
+}
+
+function findBottomCursor(data) {
+  const stack = [data];
+  const seen = new Set();
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== 'object' || seen.has(node)) continue;
+    seen.add(node);
+    if (node.cursorType === 'Bottom' && node.value) return node.value;
+    if (Array.isArray(node)) {
+      for (const value of node) stack.push(value);
+    } else {
+      for (const value of Object.values(node)) {
+        if (value && typeof value === 'object') stack.push(value);
+      }
+    }
+  }
+  return '';
+}
+
+function splitShellWords(text) {
+  const words = [];
+  let current = '';
+  let quote = '';
+  let escaped = false;
+  for (const char of String(text).replace(/\\\n/g, ' ')) {
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+    if (char === '\\' && quote !== "'") {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (char === quote) quote = '';
+      else current += char;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (/\s/.test(char)) {
+      if (current) {
+        words.push(current);
+        current = '';
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (current) words.push(current);
+  return words;
+}
+
 function mergeDomTweet(existing, next) {
   if (!existing) return next;
   return {
@@ -570,10 +846,15 @@ Options:
   --username       X handle, with or without @
   --language       Report language: en or zh. Default: zh
   --input          Optional existing capture JSON/GraphQL JSON/JSONL. Repeatable; skips live capture.
+  --curl-dir       Directory with gitignored UserTweets.curl and UserTweetsAndReplies.curl copied from Chrome DevTools.
   --max-scrolls    Maximum Chrome DOM scroll rounds. Default: 240
+  --max-pages      Maximum GraphQL cursor pages per cURL source. Default: 500
+  --page-size      Optional GraphQL page size override for cURL sources.
   --out-dir        Report output directory. Default: reports
   --raw-dir        Raw capture output directory. Default: data/raw
   --no-snapshot    Do not append a follower snapshot while rendering the timeline report
+  --require-full-history
+                   Exit before report generation unless GraphQL posts+replies sources are exhausted and profile count coverage is satisfied.
   --dry-run        Print paths and capture capability detection without writing files
 `);
 }

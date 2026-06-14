@@ -5,3 +5,4 @@ node_modules/
 # Browser captures may include account/session-adjacent public data.
 data/raw/*.json
 data/follower-snapshots/*.jsonl
+x_curl/*.curl

@@ -13,6 +13,7 @@ import {
   mergeCaptureRecords,
   normalizeLanguage,
   renderMarkdown,
+  summarizeCaptureCompleteness,
 } from '../lib/x-startup-analysis-core.mjs';
 import fixture from '../fixtures/aleabitoreddit-sample-capture.json' with { type: 'json' };
 
@@ -159,6 +160,47 @@ test('classifies DOM-only rows without conversation evidence as unclassified', (
     isRetweet: false,
     conversationId: '',
   }), 'unclassified');
+});
+
+test('summarizes full-history completeness conservatively', () => {
+  const full = summarizeCaptureCompleteness({
+    collection: {
+      method: 'curl-graphql-pagination',
+      captureQuality: 'graphql',
+      sourceExhausted: true,
+      sources: [{ name: 'UserTweetsAndReplies', exhausted: true }],
+    },
+    users: [{ username: 'aleabitoreddit', posts: 2 }],
+    tweets: [
+      { id: '100', source: 'graphql', isReply: false },
+      { id: '101', source: 'graphql', isReply: true },
+    ],
+  });
+  assert.equal(full.status, 'full-history');
+  assert.equal(full.isFullHistory, true);
+
+  const dom = summarizeCaptureCompleteness({
+    users: [{ username: 'aleabitoreddit', posts: 100 }],
+    tweets: [{ id: '100', source: 'chrome-dom-cli' }],
+  });
+  assert.equal(dom.status, 'partial-dom-only');
+  assert.equal(dom.isFullHistory, false);
+
+  const gap = summarizeCaptureCompleteness({
+    collection: {
+      method: 'curl-graphql-pagination',
+      captureQuality: 'graphql',
+      sourceExhausted: true,
+      sources: [{ name: 'UserTweetsAndReplies', exhausted: true }],
+    },
+    users: [{ username: 'aleabitoreddit', posts: 3 }],
+    tweets: [
+      { id: '100', source: 'graphql', isReply: false },
+      { id: '101', source: 'graphql', isReply: true },
+    ],
+  });
+  assert.equal(gap.status, 'source-exhausted-count-gap');
+  assert.equal(gap.isFullHistory, false);
 });
 
 test('orchestrator supports dry-run and fixture smoke output in both languages', async () => {

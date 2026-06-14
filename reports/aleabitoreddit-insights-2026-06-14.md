@@ -1,11 +1,13 @@
 # @aleabitoreddit outside-in X account analysis
 
-Generated: 2026-06-14T09:01:27.597Z
+Generated: 2026-06-14T09:21:48.183Z
 
 ## Source and Classification Boundary
 
 - Input records: 39 timeline items from local browser capture.
 - Capture quality: dom-only.
+- Full-history status: partial-dom-only. Captured 39 / profile count 7,267.
+- Important: this is not a full-history report and should not be treated as a complete picture of all posts/replies.
 - Current captured account snapshot: 836,500 followers, 175 following, 7,267 profile post count.
 - Definite replies in the current dataset: 1.
 - DOM-only items without reply metadata: 38. These must be treated as unclassified/top-level-unknown, not proven posts.
