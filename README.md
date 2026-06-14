@@ -33,7 +33,9 @@ This Skill was created to make that outside-in analysis repeatable. Give it any 
 - **Language pre-config**: reports can be generated in English or Chinese with `--language en|zh`.
 - **Conservative post/reply classification**: DOM-only rows without parent/reply evidence are marked `unclassified`, never blindly treated as top-level posts.
 - **Capture quality labels**: summaries expose `graphql`, `mixed`, `dom-only`, or `unknown`.
-- **Outside-in growth insights**: correlations, topic patterns, timing/format patterns, top posts, interaction accounts, and replication lessons.
+- **Rich insights reports**: each report explains the account's source/capture boundary, metric correlations across impressions, likes, replies, reposts, quotes, and bookmarks, attribute correlations for text length/media/links/timing, topic signals, top timeline items by public signals, interaction accounts, and concrete replication lessons.
+- **Account style and habit analysis**: reports summarize the underlying account's posting style, recurring habits, reader value, niche positioning, and what followers appear to reward.
+- **Outside-in growth insights**: designed to answer what the account did to gain followers and what another creator can learn from it.
 - **Local-first outputs**: Markdown and CSV files are easy to inspect, commit, or publish.
 
 ## Example Analysis
