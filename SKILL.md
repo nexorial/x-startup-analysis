@@ -27,10 +27,23 @@ For a different target, replace `aleabitoreddit` with the requested X handle. Th
 For canonical or public examples, require full posts/replies coverage:
 
 ```bash
-npm run run -- --username aleabitoreddit --language zh --curl-dir x_curl --require-full-history
+npm run chrome:cdp
+npm run run -- --username aleabitoreddit --language zh --require-full-history
 ```
 
-Before using `--curl-dir`, ask the user to save Chrome DevTools `Copy as cURL` output locally as `x_curl/UserTweets.curl` and `x_curl/UserTweetsAndReplies.curl`. These files contain login cookies/tokens and must stay local/gitignored.
+Preferred full-history path: run `npm run chrome:cdp`, have the user log in to X in the dedicated Chrome window, then run:
+
+```bash
+npm run run -- --username aleabitoreddit --language zh --require-full-history
+```
+
+The CLI captures authenticated `UserTweets` and `UserTweetsAndReplies` request templates through CDP and paginates them locally. It uses request credentials in memory only and does not write them to reports.
+
+Fallback path: before using `--curl-dir`, ask the user to save Chrome DevTools `Copy as cURL` output locally as `x_curl/UserTweets.curl` and `x_curl/UserTweetsAndReplies.curl`. These files contain login cookies/tokens and must stay local/gitignored.
+
+```bash
+npm run run -- --username aleabitoreddit --language zh --curl-dir x_curl --require-full-history
+```
 
 ## Capture Quality Rules
 

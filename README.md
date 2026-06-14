@@ -34,6 +34,7 @@ This Skill was created to make that outside-in analysis repeatable. Give it any 
 - **Conservative post/reply classification**: DOM-only rows without parent/reply evidence are marked `unclassified`, never blindly treated as top-level posts.
 - **Capture quality labels**: summaries expose `graphql`, `mixed`, `dom-only`, or `unknown`.
 - **Full-history gate**: publishable account examples should use exhausted GraphQL posts+replies pagination. Use `--require-full-history` to stop before report generation when the capture cannot prove full posts/replies coverage.
+- **Automated CDP GraphQL pagination**: use a remote-debugging Chrome profile to let the CLI capture authenticated `UserTweets` and `UserTweetsAndReplies` request templates, then paginate cursors locally without writing credentials to reports.
 - **Authenticated cURL import**: when CDP is unavailable, copy `UserTweets` and `UserTweetsAndReplies` requests from Chrome DevTools into local gitignored files and let the CLI paginate cursors from those requests.
 - **Rich insights reports**: each report explains the account's source/capture boundary, metric correlations across impressions, likes, replies, reposts, quotes, and bookmarks, attribute correlations for text length/media/links/timing, topic signals, top timeline items by public signals, interaction accounts, and concrete replication lessons.
 - **Account style and habit analysis**: reports summarize the underlying account's posting style, recurring habits, reader value, niche positioning, and what followers appear to reward.
@@ -110,7 +111,20 @@ Run the default workflow:
 npm run run -- --username aleabitoreddit --language en
 ```
 
-Run a publishable full-history workflow from local DevTools cURL files:
+Run a publishable full-history workflow from an isolated CDP Chrome profile:
+
+```bash
+npm run chrome:cdp
+# Log in to X in the Chrome window that opens.
+npm run run -- \
+  --username aleabitoreddit \
+  --language en \
+  --require-full-history
+```
+
+The CDP workflow uses request credentials in memory only. They are not written to raw JSON, Markdown, CSV, or run-summary outputs. The dedicated `.chrome-cdp-profile/` browser state is gitignored.
+
+If CDP is unavailable, run a publishable full-history workflow from local DevTools cURL files:
 
 ```bash
 mkdir -p x_curl
@@ -186,7 +200,9 @@ Use `--require-full-history` for reports intended as canonical examples. It exit
 
 ### Copy Full-History cURL Requests
 
-If CDP is unavailable, use Chrome DevTools:
+Preferred path: run `npm run chrome:cdp`, log in to X in the dedicated Chrome window, then run the normal CLI with `--require-full-history`. The CLI will observe `UserTweets` and `UserTweetsAndReplies` through CDP and paginate them automatically.
+
+Fallback path: if CDP is unavailable, use Chrome DevTools:
 
 1. Log in to X in Chrome and open `https://x.com/<username>/with_replies`.
 2. Open DevTools, select `Network`, then `Fetch/XHR`.

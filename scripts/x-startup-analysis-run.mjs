@@ -103,7 +103,7 @@ if (inputFiles.length) {
   try {
     if (cdp) {
       try {
-        capture = await captureFromCdp({ username, maxScrolls, cdp });
+        capture = await captureFromCdp({ username, maxScrolls, maxPages, pageSize, cdp });
         requestedMethod = 'chrome-cdp-graphql';
       } catch (cdpError) {
         limitations.push(`CDP capture failed: ${shortError(cdpError)}. Falling back to Chrome DOM automation.`);
@@ -114,12 +114,13 @@ if (inputFiles.length) {
     }
     limitations.push('DOM automation cannot prove top-level status for rows without explicit reply context; those rows must remain unclassified.');
   } catch (error) {
+    const priorLimitations = limitations;
     capture = emptyCapture({
       username,
       method: 'chrome-dom-automation-failed',
       limitation: `Chrome DOM automation failed: ${shortError(error)}. Enable Chrome "Allow JavaScript from Apple Events" or provide --input from the DevTools capture script.`,
     });
-    limitations = capture.collection.limitations;
+    limitations = [...priorLimitations, ...capture.collection.limitations];
   }
   if (!cdp) {
     limitations.push('No Chrome remote debugging endpoint was detected, so this run could not preserve GraphQL/Relay reply fields automatically.');
@@ -297,7 +298,7 @@ async function detectCdpEndpoint() {
   return null;
 }
 
-async function captureFromCdp({ username, maxScrolls, cdp }) {
+async function captureFromCdp({ username, maxScrolls, maxPages, pageSize, cdp }) {
   if (typeof WebSocket !== 'function') {
     throw new Error('This Node runtime does not expose WebSocket for CDP capture');
   }
@@ -311,7 +312,37 @@ async function captureFromCdp({ username, maxScrolls, cdp }) {
 
   const client = await createCdpClient(target.webSocketDebuggerUrl);
   const graphqlUrls = new Map();
+  const graphqlRequests = new Map();
+  const graphqlTemplates = new Map();
   const rawPayloads = [];
+  const requiredSources = ['UserTweets', 'UserTweetsAndReplies'];
+  const pageUrls = [
+    `https://x.com/${username}`,
+    `https://x.com/${username}/with_replies`,
+  ];
+  client.on('Network.requestWillBeSent', (params) => {
+    const operation = graphqlOperationName(params?.request?.url);
+    if (!operation) return;
+    const template = {
+      name: operation,
+      url: params.request.url,
+      method: params.request.method || 'GET',
+      headers: params.request.headers || {},
+      body: params.request.postData || null,
+    };
+    graphqlRequests.set(params.requestId, template);
+    if (requiredSources.includes(operation)) {
+      graphqlTemplates.set(operation, mergeRequestTemplate(graphqlTemplates.get(operation), template));
+    }
+  });
+  client.on('Network.requestWillBeSentExtraInfo', (params) => {
+    const template = graphqlRequests.get(params.requestId);
+    if (!template) return;
+    template.headers = { ...(template.headers || {}), ...(params.headers || {}) };
+    if (requiredSources.includes(template.name)) {
+      graphqlTemplates.set(template.name, mergeRequestTemplate(graphqlTemplates.get(template.name), template));
+    }
+  });
   client.on('Network.responseReceived', (params) => {
     const url = String(params?.response?.url || '');
     if (/\/i\/api\/graphql\/.*(UserTweets|UserTweetsAndReplies|TweetDetail|UserByScreenName|UserByRestId|SearchTimeline|UserMedia)/i.test(url)) {
@@ -331,38 +362,75 @@ async function captureFromCdp({ username, maxScrolls, cdp }) {
   await client.send('Network.enable');
   await client.send('Page.enable');
   await client.send('Runtime.enable');
-  await client.send('Page.navigate', { url: pageUrl });
-  await sleep(3500);
 
   let domCapture = { tweets: [], users: [] };
-  let idle = 0;
-  let lastCount = 0;
-  for (let i = 0; i < maxScrolls && idle < 10; i += 1) {
-    domCapture = await evaluateCdpJson(client, domCaptureSnippet(username));
-    await client.send('Runtime.evaluate', { expression: 'window.scrollTo(0, document.body.scrollHeight); "ok";', returnByValue: true });
-    await sleep(1200);
-    const graphTweets = rawPayloads.flatMap((payload) => extractFromGraphqlPayload(payload, { username }).tweets || []);
-    const count = new Set([...(domCapture.tweets || []).map((tweet) => tweet.id), ...graphTweets.map((tweet) => tweet.id)]).size;
-    idle = count === lastCount ? idle + 1 : 0;
-    lastCount = count;
+  for (const pageUrl of pageUrls) {
+    await client.send('Page.navigate', { url: pageUrl });
+    await sleep(3500);
+    let idle = 0;
+    let lastCount = 0;
+    for (let i = 0; i < maxScrolls && idle < 8; i += 1) {
+      domCapture = await evaluateCdpJson(client, domCaptureSnippet(username));
+      await client.send('Runtime.evaluate', { expression: 'window.scrollTo(0, document.body.scrollHeight); "ok";', returnByValue: true });
+      await sleep(1200);
+      const graphTweets = rawPayloads.flatMap((payload) => extractFromGraphqlPayload(payload, { username }).tweets || []);
+      const count = new Set([...(domCapture.tweets || []).map((tweet) => tweet.id), ...graphTweets.map((tweet) => tweet.id)]).size;
+      idle = count === lastCount ? idle + 1 : 0;
+      lastCount = count;
+      if (requiredSources.every((sourceName) => graphqlTemplates.has(sourceName)) && i >= 2) break;
+    }
   }
   await sleep(500);
-  client.close();
 
   const captures = rawPayloads.map((payload) => extractFromGraphqlPayload(payload, { username }));
+  const sources = [];
+  const limitations = [];
+  for (const sourceName of requiredSources) {
+    const template = graphqlTemplates.get(sourceName);
+    if (!template) {
+      limitations.push(`CDP did not observe ${sourceName}; open the matching X tab in the remote-debugging Chrome profile or fall back to --curl-dir.`);
+      continue;
+    }
+    const result = await paginateGraphqlTemplate({
+      username,
+      template,
+      sourceName,
+      required: true,
+      maxPages,
+      pageSize,
+      cdpClient: client,
+    });
+    captures.push(...result.captures);
+    sources.push(result.summary);
+    limitations.push(...result.limitations);
+  }
+  client.close();
   captures.push(domCapture);
   const merged = mergeCaptureRecords(captures, username);
+  const sourceExhausted = requiredSources.every((sourceName) => {
+    const source = sources.find((item) => item.name === sourceName);
+    return source?.exhausted;
+  });
+  if (!sourceExhausted) {
+    limitations.push('CDP full-history pagination is not proven because at least one required GraphQL source was missing or stopped before cursor exhaustion.');
+  }
   return {
     version: '0.1.0-cdp-cli',
     username,
     capturedAt: new Date().toISOString(),
-    page: pageUrl,
+    page: pageUrls.at(-1),
     collection: {
       method: 'chrome-cdp-graphql',
       rawGraphqlResponses: rawPayloads.length,
-      limitations: rawPayloads.length
-        ? ['CDP captured GraphQL/Relay responses and merged visible DOM rows.']
-        : ['CDP was available, but no matching X GraphQL timeline responses were captured; output may be DOM-only.'],
+      sourceExhausted,
+      sources,
+      limitations: [...new Set([
+        rawPayloads.length
+          ? 'CDP captured GraphQL/Relay responses and merged visible DOM rows.'
+          : 'CDP was available, but no matching X GraphQL timeline responses were captured during scrolling.',
+        'CDP request credentials are used in memory for local pagination and are not written to raw/report outputs.',
+        ...limitations,
+      ])],
     },
     tweets: merged.tweets,
     users: merged.users,
@@ -510,7 +578,11 @@ async function captureFromCurlDir({ username, curlDir, maxPages, pageSize }) {
 async function paginateCurlSource({ username, path, sourceName, required, maxPages, pageSize }) {
   const command = splitShellWords(await readFile(path, 'utf8'));
   if (command[0] !== 'curl' || !command[1]) throw new Error(`${basename(path)} is not a usable curl command`);
-  const { url, headers, method, body } = parseCurlCommand(command);
+  const template = parseCurlCommand(command);
+  return paginateGraphqlTemplate({ username, template, sourceName, required, maxPages, pageSize, file: basename(path) });
+}
+
+async function paginateGraphqlTemplate({ username, template, sourceName, required, maxPages, pageSize, file = 'cdp-template', cdpClient = null }) {
   const captures = [];
   const pages = [];
   const limitations = [];
@@ -523,16 +595,11 @@ async function paginateCurlSource({ username, path, sourceName, required, maxPag
       break;
     }
     seenCursors.add(cursor || '');
-    const pageUrl = setGraphqlCursor(url, cursor, pageSize);
-    const response = await fetch(pageUrl, {
-      method,
-      headers,
-      body: method === 'GET' ? undefined : body,
-      signal: AbortSignal.timeout(30000),
-    });
-    const text = await response.text();
+    const request = setGraphqlCursorInTemplate(template, cursor, pageSize);
+    const response = await fetchGraphqlPage(request, { cdpClient });
+    const text = response.text;
     if (!response.ok) {
-      limitations.push(`${sourceName} page ${page + 1} failed with HTTP ${response.status}.`);
+      limitations.push(`${sourceName} page ${page + 1} failed with HTTP ${response.status}${formatRateLimitHeaders(response.headers)}: ${text.slice(0, 160)}`);
       break;
     }
     const json = JSON.parse(text);
@@ -563,7 +630,7 @@ async function paginateCurlSource({ username, path, sourceName, required, maxPag
     limitations,
     summary: {
       name: sourceName,
-      file: basename(path),
+      file,
       required,
       pages: pages.length,
       records: pages.reduce((sum, page) => sum + page.records, 0),
@@ -571,6 +638,69 @@ async function paginateCurlSource({ username, path, sourceName, required, maxPag
       lastCursor: pages.at(-1)?.nextCursor || '',
     },
   };
+}
+
+async function fetchGraphqlPage(request, { cdpClient = null } = {}) {
+  if (cdpClient) return fetchGraphqlPageInBrowser(cdpClient, request);
+  const response = await fetch(request.url, {
+    method: request.method,
+    headers: sanitizeFetchHeaders(request.headers),
+    body: request.method === 'GET' ? undefined : request.body,
+    signal: AbortSignal.timeout(30000),
+  });
+  return {
+    ok: response.ok,
+    status: response.status,
+    headers: Object.fromEntries(response.headers.entries()),
+    text: await response.text(),
+  };
+}
+
+async function fetchGraphqlPageInBrowser(client, request) {
+  const browserRequest = {
+    url: request.url,
+    method: request.method,
+    headers: sanitizeBrowserFetchHeaders(request.headers),
+    body: request.method === 'GET' ? null : request.body,
+  };
+  const result = await client.send('Runtime.evaluate', {
+    expression: `fetch(${JSON.stringify(browserRequest.url)}, {
+      method: ${JSON.stringify(browserRequest.method)},
+      headers: ${JSON.stringify(browserRequest.headers)},
+      body: ${JSON.stringify(browserRequest.body)},
+      credentials: 'include'
+    }).then(async (response) => ({
+      ok: response.ok,
+      status: response.status,
+      headers: Object.fromEntries(response.headers.entries()),
+      text: await response.text()
+    })).catch((error) => ({
+      ok: false,
+      status: 0,
+      headers: {},
+      text: String(error && error.message || error)
+    }))`,
+    returnByValue: true,
+    awaitPromise: true,
+  });
+  return result?.result?.value || { ok: false, status: 0, headers: {}, text: 'Browser fetch did not return a value' };
+}
+
+function formatRateLimitHeaders(headers = {}) {
+  const reset = headers['x-rate-limit-reset'];
+  const remaining = headers['x-rate-limit-remaining'];
+  const limit = headers['x-rate-limit-limit'];
+  const retryAfter = headers['retry-after'];
+  const parts = [];
+  if (limit) parts.push(`limit=${limit}`);
+  if (remaining) parts.push(`remaining=${remaining}`);
+  if (reset) {
+    const resetMs = Number(reset) * 1000;
+    const resetAt = Number.isFinite(resetMs) ? new Date(resetMs).toISOString() : reset;
+    parts.push(`reset=${resetAt}`);
+  }
+  if (retryAfter) parts.push(`retry-after=${retryAfter}s`);
+  return parts.length ? ` (${parts.join(', ')})` : '';
 }
 
 function parseCurlCommand(command) {
@@ -603,6 +733,25 @@ function parseCurlCommand(command) {
   return { url, headers, method, body };
 }
 
+function graphqlOperationName(url) {
+  const match = String(url || '').match(/\/i\/api\/graphql\/[^/]+\/([^/?#]+)/i);
+  return match?.[1] || '';
+}
+
+function mergeRequestTemplate(existing, next) {
+  if (!existing) return structuredCloneSafeTemplate(next);
+  return {
+    ...existing,
+    ...next,
+    headers: { ...(existing.headers || {}), ...(next.headers || {}) },
+    body: next.body || existing.body || null,
+  };
+}
+
+function structuredCloneSafeTemplate(value) {
+  return JSON.parse(JSON.stringify(value || {}));
+}
+
 function setGraphqlCursor(url, cursor, pageSize) {
   const parsed = new URL(url);
   const variables = JSON.parse(parsed.searchParams.get('variables') || '{}');
@@ -611,6 +760,100 @@ function setGraphqlCursor(url, cursor, pageSize) {
   if (pageSize) variables.count = pageSize;
   parsed.searchParams.set('variables', JSON.stringify(variables));
   return parsed.toString();
+}
+
+function setGraphqlCursorInTemplate(template, cursor, pageSize) {
+  const method = String(template.method || 'GET').toUpperCase();
+  const request = {
+    url: template.url,
+    method,
+    headers: template.headers || {},
+    body: template.body || null,
+  };
+  const parsed = new URL(request.url);
+  if (parsed.searchParams.has('variables')) {
+    request.url = setGraphqlCursor(request.url, cursor, pageSize);
+    return request;
+  }
+
+  if (request.body) {
+    const body = mutateGraphqlBodyCursor(request.body, cursor, pageSize);
+    if (body) request.body = body;
+  }
+  return request;
+}
+
+function mutateGraphqlBodyCursor(body, cursor, pageSize) {
+  const text = String(body || '');
+  try {
+    const json = JSON.parse(text);
+    json.variables = mutateVariables(json.variables || {}, cursor, pageSize);
+    return JSON.stringify(json);
+  } catch (_) {
+    // Some clients encode POST bodies as form data.
+  }
+  try {
+    const params = new URLSearchParams(text);
+    if (!params.has('variables')) return text;
+    const variables = JSON.parse(params.get('variables') || '{}');
+    params.set('variables', JSON.stringify(mutateVariables(variables, cursor, pageSize)));
+    return params.toString();
+  } catch (_) {
+    return text;
+  }
+}
+
+function mutateVariables(variables, cursor, pageSize) {
+  const next = { ...(variables || {}) };
+  if (cursor) next.cursor = cursor;
+  else delete next.cursor;
+  if (pageSize) next.count = pageSize;
+  return next;
+}
+
+function sanitizeFetchHeaders(headers = {}) {
+  const out = {};
+  for (const [key, value] of Object.entries(headers || {})) {
+    const lower = key.toLowerCase();
+    if (lower.startsWith(':')) continue;
+    if ([
+      'accept-encoding',
+      'connection',
+      'content-length',
+      'host',
+      'origin',
+      'referer',
+      'sec-fetch-dest',
+      'sec-fetch-mode',
+      'sec-fetch-site',
+      'sec-ch-ua',
+      'sec-ch-ua-mobile',
+      'sec-ch-ua-platform',
+    ].includes(lower)) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+function sanitizeBrowserFetchHeaders(headers = {}) {
+  const out = {};
+  for (const [key, value] of Object.entries(headers || {})) {
+    const lower = key.toLowerCase();
+    if (lower.startsWith(':')) continue;
+    if ([
+      'accept-encoding',
+      'connection',
+      'content-length',
+      'cookie',
+      'host',
+      'origin',
+      'referer',
+      'user-agent',
+    ].includes(lower)) continue;
+    if (lower.startsWith('sec-')) continue;
+    out[key] = value;
+  }
+  return out;
 }
 
 function findBottomCursor(data) {

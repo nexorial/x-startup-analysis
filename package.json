@@ -16,6 +16,7 @@
   },
   "description": "Local-first X account startup analysis capture and Markdown reporting tool.",
   "scripts": {
+    "chrome:cdp": "node scripts/launch-cdp-chrome.mjs",
     "run": "node scripts/x-startup-analysis-run.mjs",
     "analyze": "node scripts/x-startup-analysis.mjs",
     "insights": "node scripts/x-startup-analysis-insights.mjs",

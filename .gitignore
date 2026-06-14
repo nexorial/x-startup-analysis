@@ -1,6 +1,7 @@
 .DS_Store
 node_modules/
 .omx/
+.chrome-cdp-profile/
 
 # Browser captures may include account/session-adjacent public data.
 data/raw/*.json
