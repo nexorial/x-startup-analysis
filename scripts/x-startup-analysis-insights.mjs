@@ -21,6 +21,7 @@ const language = normalizeLanguage(args.language);
 const inputFiles = Array.isArray(args.input) ? args.input : [args.input];
 const captures = [];
 for (const input of inputFiles) captures.push(...await readInput(resolve(input), username));
+const inputLimitations = captureLimitationsFromInputs(captures);
 
 const merged = mergeCaptureRecords(captures, username);
 const report = renderInsights({
@@ -29,6 +30,7 @@ const report = renderInsights({
   users: merged.users,
   generatedAt: new Date().toISOString(),
   language,
+  inputLimitations,
 });
 
 const outPath = resolve(args.out);
@@ -36,11 +38,14 @@ await mkdir(dirname(outPath), { recursive: true });
 await writeFile(outPath, report);
 console.log(JSON.stringify({ username, language, tweets: merged.tweets.length, out: outPath }, null, 2));
 
-function renderInsights({ username, tweets, users, generatedAt, language = 'zh' }) {
+function renderInsights({ username, tweets, users, generatedAt, language = 'zh', inputLimitations = [] }) {
   const zh = normalizeLanguage(language) === 'zh';
   const knownReplies = tweets.filter((tweet) => tweet.isReply);
   const domUnclassified = tweets.filter((tweet) => !tweet.isReply && !tweet.isQuote && !tweet.isRetweet && String(tweet.source || '').includes('dom'));
-  const captureLimitations = [...new Set(tweets.map((tweet) => tweet.captureLimitation).filter(Boolean))];
+  const captureLimitations = [...new Set([
+    ...inputLimitations,
+    ...tweets.map((tweet) => tweet.captureLimitation).filter(Boolean),
+  ])];
   const bugSample = tweets.find((tweet) => tweet.id === '2060940144203698485');
   const topByImpressions = top(tweets, (tweet) => metric(tweet, 'impressions'), 12);
   const topByBookmarks = top(tweets, (tweet) => metric(tweet, 'bookmarks'), 10);
@@ -215,6 +220,14 @@ async function readInput(path, username) {
   if (json.tweets || json.users) return [json];
   if (json.data?.tweets || json.data?.users) return [json.data];
   return [extractFromGraphqlPayload(json, { username })];
+}
+
+function captureLimitationsFromInputs(captures) {
+  const out = [];
+  for (const capture of captures) {
+    for (const limitation of capture?.collection?.limitations || []) out.push(limitation);
+  }
+  return out;
 }
 
 function metric(tweet, key) {

@@ -40,7 +40,7 @@ This Skill was created to make that outside-in analysis repeatable. Give it any 
 
 ## Example Analysis
 
-This repository includes an actual DOM-only analysis for [`@aleabitoreddit`](https://x.com/aleabitoreddit), captured on June 14, 2026:
+This repository includes a verified recent-window DOM-only analysis for [`@aleabitoreddit`](https://x.com/aleabitoreddit), captured on June 14, 2026:
 
 - [Timeline report](reports/aleabitoreddit-2026-06-14.md)
 - [Insights report](reports/aleabitoreddit-insights-2026-06-14.md)
@@ -49,7 +49,7 @@ This repository includes an actual DOM-only analysis for [`@aleabitoreddit`](htt
 - [Chinese timeline report](reports/zh/aleabitoreddit-2026-06-14.md)
 - [Chinese insights report](reports/zh/aleabitoreddit-insights-2026-06-14.md)
 
-Important boundary: the included example is `dom-only`. It is useful for public engagement analysis, but precise post/reply ratios require GraphQL/Relay capture or status-page enrichment.
+Important boundary: the included example is `dom-only` and covers the recent rows X loaded before the profile timeline stopped at the page footer. It is useful for public engagement analysis, but a true full-history account analysis requires GraphQL/Relay capture, a longer accessible timeline, or another historical source.
 
 ## Repository Structure
 

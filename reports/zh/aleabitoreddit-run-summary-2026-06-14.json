@@ -2,10 +2,23 @@
   "username": "aleabitoreddit",
   "language": "zh",
   "captureQuality": "dom-only",
+  "sourceMethod": "input-file",
   "cdpAvailable": false,
   "cdpEndpoint": null,
-  "tweets": 14,
+  "tweets": 39,
   "users": 1,
+  "capturedRange": {
+    "first": "2026-06-11T14:07:42.000Z",
+    "last": "2026-06-14T02:19:51.000Z"
+  },
+  "profileSnapshot": {
+    "capturedAt": "2026-06-14T08:09:25.006Z",
+    "followers": 836500,
+    "following": 175,
+    "posts": 7267,
+    "source": "dom-profile",
+    "username": "aleabitoreddit"
+  },
   "rawPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/data/raw/aleabitoreddit-2026-06-14.json",
   "timelinePath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-2026-06-14.md",
   "csvPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/zh/aleabitoreddit-2026-06-14.csv",
@@ -13,6 +26,31 @@
   "limitations": [
     "Chrome plugin read-only DOM capture; GraphQL/Relay reply fields were not available.",
     "DOM-only rows without explicit reply context must remain unclassified.",
-    "X virtualizes timelines, so the report covers the rows loaded before the timeline stopped changing."
-  ]
+    "X virtualizes timelines and appears to stop loading older rows after a small recent window for this account/session."
+  ],
+  "sourceEvidence": {
+    "lastProgress": {
+      "i": 80,
+      "total": 39,
+      "visible": 6,
+      "articleCount": 9,
+      "y": 18024,
+      "h": 18979,
+      "earliest": "2026-06-11T14:07:42.000Z"
+    },
+    "tail": [
+      "Terms of Service",
+      "|",
+      "Privacy Policy",
+      "|",
+      "Cookie Policy",
+      "|",
+      "Accessibility",
+      "|",
+      "Ads info",
+      "|",
+      "More",
+      "© 2026 X Corp."
+    ]
+  }
 }

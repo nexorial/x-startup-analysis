@@ -57,9 +57,15 @@ let requestedMethod = 'chrome-dom-automation';
 if (inputFiles.length) {
   const captures = [];
   const inputLimitations = [];
+  const inputProgress = [];
+  const inputTail = [];
+  const inputMethods = [];
   for (const input of inputFiles) captures.push(...await readInput(input, username));
   for (const captureItem of captures) {
     for (const limitation of captureItem?.collection?.limitations || []) inputLimitations.push(limitation);
+    for (const progress of captureItem?.collection?.progress || []) inputProgress.push(progress);
+    for (const line of captureItem?.collection?.tail || []) inputTail.push(line);
+    if (captureItem?.collection?.method) inputMethods.push(captureItem.collection.method);
   }
   const merged = mergeCaptureRecords(captures, username);
   capture = {
@@ -70,8 +76,11 @@ if (inputFiles.length) {
     collection: {
       method: 'input-file',
       inputFiles,
+      inputMethods: [...new Set(inputMethods)],
       cdpAvailable: Boolean(cdp),
       limitations: [...new Set(inputLimitations)],
+      progress: inputProgress,
+      tail: inputTail,
     },
     tweets: merged.tweets,
     users: merged.users,
@@ -137,15 +146,25 @@ const summary = {
   username,
   language,
   captureQuality,
+  sourceMethod: capture.collection?.method || null,
   cdpAvailable: Boolean(cdp),
   cdpEndpoint: cdp?.webSocketDebuggerUrl || cdp?.url || null,
   tweets: capture.tweets?.length || 0,
   users: capture.users?.length || 0,
+  capturedRange: {
+    first: capture.tweets?.[0]?.createdAtIso || null,
+    last: capture.tweets?.at(-1)?.createdAtIso || null,
+  },
+  profileSnapshot: capture.users?.[0] || null,
   rawPath,
   timelinePath,
   csvPath,
   insightsPath,
   limitations: capture.collection.limitations,
+  sourceEvidence: {
+    lastProgress: capture.collection?.progress?.at(-1) || null,
+    tail: capture.collection?.tail?.slice?.(-12) || null,
+  },
 };
 await mkdir(dirname(summaryPath), { recursive: true });
 await writeFile(summaryPath, `${JSON.stringify(summary, null, 2)}\n`);
