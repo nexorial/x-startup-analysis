@@ -35,8 +35,9 @@ const timelinePath = resolve(outDir, `${username}-${today}.md`);
 const csvPath = resolve(outDir, `${username}-${today}.csv`);
 const insightsPath = resolve(outDir, `${username}-insights-${today}.md`);
 const summaryPath = resolve(outDir, `${username}-run-summary-${today}.json`);
+const inputFiles = args.input ? asArray(args.input).map((path) => resolve(path)) : [];
 
-const cdp = await detectCdpEndpoint();
+const cdp = inputFiles.length || args['curl-dir'] ? null : await detectCdpEndpoint();
 if (dryRun) {
   console.log(JSON.stringify({
     username,
@@ -54,7 +55,6 @@ if (dryRun) {
   process.exit(0);
 }
 
-const inputFiles = args.input ? asArray(args.input).map((path) => resolve(path)) : [];
 let capture;
 let limitations = [];
 let requestedMethod = 'chrome-dom-automation';

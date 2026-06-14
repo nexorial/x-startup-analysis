@@ -44,7 +44,7 @@ This Skill was created to make that outside-in analysis repeatable. Give it any 
 
 ## Example Analysis
 
-This repository includes a verified recent-window DOM-only analysis for [`@aleabitoreddit`](https://x.com/aleabitoreddit), captured on June 14, 2026:
+This repository includes a partial mixed-source analysis for [`@aleabitoreddit`](https://x.com/aleabitoreddit), captured on June 14, 2026 from the best local union of available CDP/GraphQL and DOM captures:
 
 - [Timeline report](reports/aleabitoreddit-2026-06-14.md)
 - [Insights report](reports/aleabitoreddit-insights-2026-06-14.md)
@@ -53,7 +53,7 @@ This repository includes a verified recent-window DOM-only analysis for [`@aleab
 - [Chinese timeline report](reports/zh/aleabitoreddit-2026-06-14.md)
 - [Chinese insights report](reports/zh/aleabitoreddit-insights-2026-06-14.md)
 
-Important boundary: a report is not considered a full account picture unless the run summary says `completeness.isFullHistory: true`. DOM-only recent-window reports are validation artifacts only. Full posts/replies analysis requires GraphQL/Relay pagination from CDP or local DevTools cURL files.
+Important boundary: a report is not considered a full account picture unless the run summary says `completeness.isFullHistory: true`. Partial mixed-source and DOM-only reports are validation artifacts unless the full-history gate passes. Full posts/replies analysis requires GraphQL/Relay pagination from CDP or local DevTools cURL files.
 
 Current `@aleabitoreddit` validation status: the best local union captured 1,474 unique records, about 20.3% of the visible profile count of 7,267 posts. That is useful for method validation and partial analysis, but it is not a complete account history. X returned rate limits and cursor errors before cursor exhaustion.
 
@@ -193,6 +193,38 @@ npm run insights -- \
   --input data/raw/aleabitoreddit.json \
   --out reports/aleabitoreddit-insights.md
 ```
+
+## Using This Skill from Hermes, OpenClaw, or Claude Code
+
+Hermes, OpenClaw, Claude Code, and other coding agents can use this repository as a CLI-first skill even if they do not support Codex `SKILL.md` files natively.
+
+1. Clone the repository, install Node.js 20+, and run `npm test`.
+2. Ask the user for report language first: English maps to `--language en`; Chinese maps to `--language zh`. Default to `zh` if no preference is available.
+3. For a publishable account report, start with the authenticated CDP path:
+
+```bash
+npm run chrome:cdp
+# Ask the user to log in to X in the isolated Chrome window.
+npm run run -- --username <handle> --language <en|zh> --require-full-history
+```
+
+4. If CDP is unavailable, ask the user to save Chrome DevTools `Copy as cURL` output to gitignored local files, then run:
+
+```bash
+npm run run -- --username <handle> --language <en|zh> --curl-dir x_curl --require-full-history
+```
+
+Required local files:
+
+```text
+x_curl/UserTweets.curl
+x_curl/UserTweetsAndReplies.curl
+```
+
+5. If the agent already has a capture file, use `--input <capture.json>` and read the run summary before interpreting results.
+6. Never claim a full account analysis unless `reports/<handle>-run-summary-YYYY-MM-DD.json` has `completeness.isFullHistory: true`.
+7. Treat `dom-only` and `mixed` captures with `not-exhausted`, `partial-dom-only`, or `source-exhausted-count-gap` as partial reports. Rows without parent/reply evidence stay `unclassified`.
+8. Do not commit `x_curl/`, `.chrome-cdp-profile/`, or ignored `data/raw/*.json` files. Commit only intended Markdown/CSV/run-summary report artifacts.
 
 ## Capture Quality
 

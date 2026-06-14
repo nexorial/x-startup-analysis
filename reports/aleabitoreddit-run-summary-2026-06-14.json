@@ -1,14 +1,14 @@
 {
   "username": "aleabitoreddit",
   "language": "en",
-  "captureQuality": "dom-only",
+  "captureQuality": "mixed",
   "completeness": {
-    "status": "partial-dom-only",
+    "status": "not-exhausted",
     "isFullHistory": false,
-    "captureQuality": "dom-only",
-    "capturedRecords": 39,
+    "captureQuality": "mixed",
+    "capturedRecords": 1474,
     "expectedProfilePosts": 7267,
-    "coverageRatio": 0.005366726296958855,
+    "coverageRatio": 0.202834732351727,
     "sourceExhausted": false,
     "includesRepliesSource": true,
     "profileCountMatched": false
@@ -16,19 +16,19 @@
   "sourceMethod": "input-file",
   "cdpAvailable": false,
   "cdpEndpoint": null,
-  "tweets": 39,
+  "tweets": 1474,
   "users": 1,
   "capturedRange": {
-    "first": "2026-06-11T14:07:42.000Z",
+    "first": "2025-11-17T16:12:21.000Z",
     "last": "2026-06-14T02:19:51.000Z"
   },
   "profileSnapshot": {
-    "capturedAt": "2026-06-14T08:09:25.006Z",
-    "followers": 836500,
+    "username": "aleabitoreddit",
+    "followers": 837000,
     "following": 175,
     "posts": 7267,
-    "source": "dom-profile",
-    "username": "aleabitoreddit"
+    "capturedAt": "2026-06-14T10:36:51.111Z",
+    "source": "dom-profile"
   },
   "rawPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/data/raw/aleabitoreddit-2026-06-14.json",
   "timelinePath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/aleabitoreddit-2026-06-14.md",
@@ -36,9 +36,26 @@
   "insightsPath": "/Users/sihangchen/Documents/SideProjects/x-startup-analysis/reports/aleabitoreddit-insights-2026-06-14.md",
   "abortedBeforeReports": false,
   "limitations": [
-    "Chrome plugin read-only DOM capture; GraphQL/Relay reply fields were not available.",
+    "CDP captured GraphQL/Relay responses and merged visible DOM rows.",
+    "CDP request credentials are used in memory for local pagination and are not written to raw/report outputs.",
+    "UserTweets page 25 failed with HTTP 429 (limit=50, remaining=0, reset=2026-06-14T10:50:56.000Z): Rate limit exceeded\n",
+    "UserTweetsAndReplies page 5 failed with HTTP 404 (limit=500, remaining=492, reset=2026-06-14T10:51:46.000Z): ",
+    "CDP full-history pagination is not proven because at least one required GraphQL source was missing or stopped before cursor exhaustion.",
+    "DOM automation cannot prove top-level status for rows without explicit reply context; those rows must remain unclassified.",
+    "X search date-window DOM capture; GraphQL/Relay reply fields were not available.",
+    "Rows without explicit Replying to @... context remain unclassified.",
+    "Browser-only X search can omit deleted, unavailable, subscriber-only, or de-indexed posts and may stop paginating inside a date window.",
+    "X search DOM capture; GraphQL/Relay reply fields were not available.",
+    "Search results may omit posts or stop paginating before the full account history.",
     "DOM-only rows without explicit reply context must remain unclassified.",
-    "X virtualizes timelines and appears to stop loading older rows after a small recent window for this account/session."
+    "Chrome plugin read-only DOM capture; GraphQL/Relay reply fields were not available.",
+    "X virtualizes timelines and appears to stop loading older rows after a small recent window for this account/session.",
+    "X virtualizes timelines, so the report covers the rows loaded before the timeline stopped changing.",
+    "This capture is the best local union of available aleabitoreddit captures, not an exhausted full-history capture.",
+    "The best local union captured 1,474 unique records against a visible profile count of 7,267 posts (about 20.3%).",
+    "CDP GraphQL pagination did not reach source exhaustion: UserTweets hit rate-limit boundaries and UserTweetsAndReplies hit cursor/source errors in the latest live attempts.",
+    "DOM-only records without explicit reply or conversation evidence remain unclassified and must not be counted as top-level posts.",
+    "X does not expose an available-public non-subscriber denominator; subscriber-only, deleted, unavailable, protected, or session-gated records may be included in the profile count but unavailable to this viewer."
   ],
   "sourceEvidence": {
     "sources": [],

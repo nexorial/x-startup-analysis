@@ -162,7 +162,12 @@ function renderCsv(tweets) {
 }
 
 function csvCell(value) {
-  const text = String(value ?? '');
+  const text = String(value ?? '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n')
+    .trim();
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

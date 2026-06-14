@@ -48,7 +48,7 @@ function renderInsights({ username, tweets, users, generatedAt, language = 'zh',
   const captureLimitations = [...new Set([
     ...inputLimitations,
     ...tweets.map((tweet) => tweet.captureLimitation).filter(Boolean),
-  ])];
+  ].map(cleanLine).filter(Boolean))];
   const bugSample = tweets.find((tweet) => tweet.id === '2060940144203698485');
   const topByImpressions = top(tweets, (tweet) => metric(tweet, 'impressions'), 12);
   const topByBookmarks = top(tweets, (tweet) => metric(tweet, 'bookmarks'), 10);
@@ -240,6 +240,15 @@ function captureLimitationsFromInputs(captures) {
     for (const limitation of capture?.collection?.limitations || []) out.push(limitation);
   }
   return out;
+}
+
+function cleanLine(value) {
+  return String(value ?? '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .join('\n')
+    .trim();
 }
 
 function captureCompletenessFromInputs(captures) {
